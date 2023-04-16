@@ -5,6 +5,7 @@ import pathlib
 import sys
 import requests
 from bs4 import BeautifulSoup
+import selenium_driver as sd
 
 parser = argparse.ArgumentParser(
         prog="hb-get",
@@ -15,6 +16,7 @@ parser.add_argument("-o", "--output_dir", nargs="?", default=pathlib.Path("./out
 parser.add_argument("-i", "--html", nargs="?", help="Input bundle HTML file")
 parser.add_argument("-f", "--filetype", nargs="?", default="pdf", help="Filetype of file to extract from bundle.\
                     Note files without a corresponding version in the [filetype] format will not be downloaded.")
+parser.add_argument("-m", "--mfa", action="store_true", help="Check for MFA (Multi-Factor Auth)")
 
 args = parser.parse_args()
 
@@ -72,4 +74,11 @@ if __name__ == "__main__":
         print(f"\t{failed_dl_count} failed downloads")
 
     else:
-        print("hi")
+        hb = sd.HumbleDriver("https://www.humblebundle.com")
+        hb.login()
+        purchases = hb.get_purchases()
+        hb.select_purchase()
+        download_links = hb.get_download_links(args.filetype)
+
+        breakpoint()
+

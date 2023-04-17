@@ -5,7 +5,9 @@ import pathlib
 import sys
 import requests
 from bs4 import BeautifulSoup
+from pprint import pprint
 import selenium_driver as sd
+
 
 parser = argparse.ArgumentParser(
         prog="hb-get",
@@ -32,7 +34,6 @@ if __name__ == "__main__":
         dl_links = list(filter(lambda x: x.get_text().strip() == args.filetype, dl_links))
 
         failed_dl_count = 0
-        breakpoint()
         for link in dl_links:
             btn_text = link.get_text().strip()
             url = str(link['href'])
@@ -79,6 +80,6 @@ if __name__ == "__main__":
         purchases = hb.get_purchases()
         hb.select_purchase()
         download_links = hb.get_download_links(args.filetype)
+        pprint(download_links)
 
-        breakpoint()
 

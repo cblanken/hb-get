@@ -59,10 +59,11 @@ class HumbleDriver:
 
     def get_download_links(self, filetype: str):
         # Wait for rows to load with download links
-        #self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".row")))
+        self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".row")))
+
+        # Extract download links from row elements
         download_elements = self.driver.find_elements(By.CSS_SELECTOR, ".download a[href^='https://dl.humble.com']")
         download_elements = list(filter(lambda x: x.text.strip().lower() == filetype, download_elements))
-        #breakpoint()
         download_links = [x.get_attribute("href") for x in download_elements]
         return download_links
 

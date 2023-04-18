@@ -24,7 +24,7 @@ class HumbleDriver:
         # TODO: implement context manager __enter__
         pass
 
-    def __exit(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):
         # TODO: implement context manager __exit__
         pass
 
@@ -66,7 +66,23 @@ class HumbleDriver:
         download_elements = list(filter(lambda x: x.text.strip().lower() == filetype, download_elements))
         download_links = [x.get_attribute("href") for x in download_elements]
         return download_links
+    
+    def get_download_links_by_title(self, filetype: str):
+        # Wait for rows to load with download links
+        self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".row")))
 
+        # Extract download titles and hrefs from row elements
+        row_elements = self.driver.find_elements(By.CSS_SELECTOR, ".row")
+        download_links_by_title = {}
+        for row in row_elements:
+            title = row.find_element(By.CSS_SELECTOR, ".title").text.strip()
+            href_elements = row.find_elements(By.CSS_SELECTOR, ".download a[href^='https://dl.humble.com']")
+
+            # Check each download option for matching `filetype`
+            for ele in href_elements:
+                if ele.text.strip().lower() == filetype:
+                    download_links_by_title[title] = ele.get_attribute("href")
+        return download_links_by_title
 
     def select_purchase(self):
         purchases = self.get_purchases()

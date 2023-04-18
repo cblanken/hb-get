@@ -18,7 +18,6 @@ parser.add_argument("-o", "--output_dir", nargs="?", help="Output directory")
 parser.add_argument("-i", "--html", nargs="?", help="Input bundle HTML file")
 parser.add_argument("-f", "--filetype", nargs="?", default="pdf", help="Filetype of file to extract from bundle.\
                     Note files without a corresponding version in the [filetype] format will not be downloaded.")
-parser.add_argument("-m", "--mfa", action="store_true", help="Check for MFA (Multi-Factor Auth)")
 
 args = parser.parse_args()
 

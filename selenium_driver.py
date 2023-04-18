@@ -1,14 +1,17 @@
 import os
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 class HumbleDriver:
-    def __init__(self, url: str):
+    def __init__(self, url: str, max_auth_time: int = 30):
         self.base_url = url
+        self.max_auth_time = max_auth_time
 
         # Initialize Selenium browser driver
         opts = ChromeOptions()
@@ -18,7 +21,8 @@ class HumbleDriver:
         self.driver.implicitly_wait(1)
         self.driver.get(url)
 
-        self.wait = WebDriverWait(self.driver, 15)
+        self.wait = WebDriverWait(self.driver, 10)
+        self.auth_wait = WebDriverWait(self.driver, self.max_auth_time)
 
     def __enter__(self):
         # TODO: implement context manager __enter__
@@ -30,6 +34,8 @@ class HumbleDriver:
 
     def login(self, user: str = os.environ.get("HBGET_USER"),
               pw: str = os.environ.get("HBGET_PASS")):
+
+        self.driver.get(self.base_url)
 
         # Click login button
         login_btn = self.driver.find_element(By.LINK_TEXT, "Log In")
@@ -46,8 +52,16 @@ class HumbleDriver:
         form_submit_btn.click()
 
         # Wait for authentication to complete (including MFA prompt)
-        self.wait.until(EC.none_of(EC.title_contains("Log In")))
-
+        print(f"If MFA is enabled you'll need to provide the code...you have {self.max_auth_time} seconds.")
+        try:
+            self.auth_wait.until(EC.none_of(EC.title_contains("Log In")))
+        except TimeoutException:
+            print("The authentication request timed out.")
+            again = input("Try again? (y/n): ")
+            if again.lower() == 'y':
+                self.login(user)
+            else:
+                sys.exit()
 
     def get_purchases(self) -> list:
         self.driver.get(f"{self.base_url}/home/purchases")

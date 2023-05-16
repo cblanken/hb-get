@@ -11,11 +11,11 @@ import selenium_driver as sd
 
 parser = argparse.ArgumentParser(
         prog="hb-get",
-        description="Humble Book Bundle download script",
+        description="Humble Book Bundle download program",
         epilog="")
 
 parser.add_argument("-o", "--output_dir", nargs="?", help="Output directory")
-parser.add_argument("-i", "--html", nargs="?", help="Input bundle HTML file")
+parser.add_argument("--html", action="store_true", help="Read from HTML input file instead of scraping humblebundle.com")
 parser.add_argument("-f", "--filetype", nargs="?", default="pdf", help="Filetype of file to extract from bundle.\
                     Note files without a corresponding version in the [filetype] format will not be downloaded.")
 

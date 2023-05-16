@@ -1,3 +1,4 @@
+from getpass import getpass
 import os
 import sys
 from selenium import webdriver
@@ -43,9 +44,13 @@ class HumbleDriver:
 
         # Submit login form
         form_user = self.driver.find_element(By.NAME, "username")
+        if user is None:
+            user = input("Please provide your HumbleBundle username: ")
         form_user.send_keys(user)
 
         form_pass = self.driver.find_element(By.NAME, "password")
+        if pw is None:
+            pw = getpass("Please provide your HumbleBundle password: ")
         form_pass.send_keys(pw)
 
         form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")

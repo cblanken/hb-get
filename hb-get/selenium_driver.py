@@ -22,7 +22,7 @@ from selenium.common.exceptions import TimeoutException
 
 class HumbleDriver:
     """Selenium driver class"""
-    def __init__(self, url: str, max_auth_time: int = 30):
+    def __init__(self, url: str, max_auth_time: int = 60):
         self.base_url = url
         self.max_auth_time = max_auth_time
 
@@ -166,21 +166,21 @@ class HumbleDriver:
     def select_purchase(self):
         """Query user for selection of HumbleBundle purchases
         """
-        purchases = self.get_purchases()
-        if len(purchases) == 0:
+        purchases_titles = [" ".join(x.text.split()[:-4]) for x in self.get_purchases()]
+        if len(purchases_titles) == 0:
             return
 
-        for i, purchase in enumerate(purchases):
-            print(f"{i:>3}: {purchase.text}")
+        for i, purchase in enumerate(purchases_titles):
+            print(f"{i:>3}: {purchase}")
 
         while True:
-            sel = input(f"Select one above purchases (0-{len(purchases)}): ")
+            sel = input(f"Select one above purchases (0-{len(purchases_titles)}): ")
             try:
                 sel = int(sel)
-                if sel < 0 or sel > len(purchases):
+                if sel < 0 or sel > len(purchases_titles):
                     continue
                 key = self.get_purchases()[sel].get_attribute("data-hb-gamekey")
                 self.driver.get(f"{self.base_url}/downloads?key={key}")
-                break
+                return purchases_titles[sel]
             except ValueError:
                 continue

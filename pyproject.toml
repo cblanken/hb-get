@@ -10,6 +10,7 @@ python = "^3.11"
 selenium = "^4.9.1"
 bs4 = "^0.0.1"
 requests = "^2.30.0"
+rich = "^13.3.5"
 
 
 [tool.poetry.group.dev.dependencies]

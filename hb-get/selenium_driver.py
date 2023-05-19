@@ -133,7 +133,7 @@ class HumbleDriver:
         download_links = [x.get_attribute("href") for x in download_elements]
         return download_links
 
-    def get_download_links_by_title(self, filetype: str):
+    def get_download_links_by_filename(self, filetype: str):
         """Retrieve links to Humble Bundle item by their titles
 
         Args:
@@ -160,7 +160,7 @@ class HumbleDriver:
             # Check each download option for matching `filetype`
             for ele in href_elements:
                 if ele.text.strip().lower() == filetype:
-                    download_links_by_title[title] = ele.get_attribute("href")
+                    download_links_by_title[title + "." + filetype] = ele.get_attribute("href")
         return download_links_by_title
 
     def select_purchase(self):

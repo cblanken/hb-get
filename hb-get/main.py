@@ -1,12 +1,25 @@
 #!/bin/python
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import os
-import pathlib
+from functools import partial
+from pathlib import Path
 from pprint import pprint
 import requests
+import signal
+from threading import Event
 from bs4 import BeautifulSoup
 import selenium_driver as sd
 
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    TaskID,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 
 parser = argparse.ArgumentParser(
         prog="hb-get",
@@ -23,36 +36,60 @@ parser.add_argument("-f", "--filetype", nargs="?", default="pdf",
 
 args = parser.parse_args()
 
-def save_from_url(url: str, output_dir: str, filename: str):
-    filepath = pathlib.Path(output_dir, filename)
-    if os.path.exists(filepath):
-        print(f"> Skipping... {filepath} already exists")
-        return
-    else:
-        print(f"> Downloading {filename} ... ", end="", flush=True)
+class Downloader:
+    def __init__(self):
+        self.progress = Progress(
+            TextColumn("[bold blue]{task.fields[filename]}", justify="right"),
+            BarColumn(bar_width=None),
+            "[progress.percentage]{task.percentage:>3.1f}%",
+            "⋅",
+            DownloadColumn(),
+            "⋅",
+            TransferSpeedColumn(),
+            "⋅",
+            TimeRemainingColumn(),
+        )
 
-    # TODO: add progress bar per file
-    # Fetch file from web
-    file = requests.get(url, timeout=5)
-    if file.status_code != requests.status_codes.codes["ok"]:
-        print(f"Failed to download {filename}. Status code: {file.status_code}", end="", flush=True)
-        return
+        self.done_event: Event = Event()
+        signal.signal(signal.SIGINT, self.handle_sigint)
 
-    # Create output directory
-    try:
-        os.makedirs(output_dir)
-    except OSError:
-        pass # ignore error if output_dir already exists
 
-    # Write to file
-    try:
-        with open(filepath, "w+b") as fp:
-            fp.write(file.content)
+    def handle_sigint(self, _signum, _frame):
+        self.done_event.set()
 
-        print("Done")
-    except (OSError, IOError) as exc:
-        print(f"Could not open {filepath}")
-        print(exc)
+    def save_from_url(self, task_id: TaskID, url: str, output_dir: Path, filename: str):
+        filepath = Path(output_dir, filename)
+        if filepath.exists():
+            self.progress.console.log(f"Skipping {filepath}, already exists")
+            return
+
+        # Fetch file from web
+        response = requests.get(url, stream=True, timeout=5)
+
+        # Write to file
+        try:
+            with open(filepath, "wb") as file:
+                self.progress.start_task(task_id)
+                for data in response.iter_content(chunk_size=32768):
+                    file.write(data)
+                    self.progress.update(task_id, advance=len(data))
+                    if self.done_event.is_set():
+                        return
+            self.progress.console.log(f"Downloaded {filepath}")
+
+        except (OSError, IOError) as exc:
+            self.progress.console.log(f"Could not open {filename}, skipping")
+            self.progress.console.log(exc)
+
+    def download(self, urls_by_title: dict[str, str], output_dir: Path):
+        """Download files from a list of urls
+        """
+        with self.progress:
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                for title, url in urls_by_title.items():
+                    task_id = self.progress.add_task("download", filename=title, start=False)
+                    pool.submit(self.save_from_url, task_id, url, output_dir, title)
+
 
 if __name__ == "__main__":
     if args.html:
@@ -66,13 +103,7 @@ if __name__ == "__main__":
             filter(lambda x: x.get_text().strip().lower() == args.filetype, dl_hrefs))
 
         for i, link in enumerate(filtered_hrefs):
-            pprint(link)
-            btn_text = link.get_text().strip()
-            url = str(link['href'])
-            filename = url.split("?", maxsplit=1)[0][22:]
-            if args.output_dir:
-                save_from_url(url, args.output_dir, filename)
-
+            pprint(i, link)
     else:
         try:
             hb = sd.HumbleDriver("https://www.humblebundle.com")
@@ -83,14 +114,13 @@ if __name__ == "__main__":
             purchase = hb.select_purchase()
 
             print("> Retrieving download links...")
-            download_links_by_title = hb.get_download_links_by_title(args.filetype)
+            download_links_by_title = hb.get_download_links_by_filename(args.filetype)
 
-            output_dir = pathlib.Path(args.output_dir, purchase)
-            if output_dir:
-                for title, url in download_links_by_title.items():
-                    save_from_url(url, output_dir, f"{title}.{args.filetype}")
-            else:
-                print(f"> Output directory {args.output_dir} doesn't exist")
-                print("> Try again with a valid output directory")
+            # Create output directory
+            output_dir = Path(args.output_dir, purchase)
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            downloader = Downloader()
+            downloader.download(download_links_by_title, output_dir)
         except KeyboardInterrupt:
             print("Keyboard Interrupt: cancelling operations...")

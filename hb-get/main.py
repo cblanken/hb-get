@@ -9,6 +9,7 @@ import requests
 import signal
 from threading import Event
 from bs4 import BeautifulSoup
+from selenium.common.exceptions import NoSuchWindowException
 import selenium_driver as sd
 
 from rich.progress import (
@@ -91,7 +92,7 @@ class Downloader:
                     pool.submit(self.save_from_url, task_id, url, output_dir, title)
 
 
-if __name__ == "__main__":
+def main():
     if args.html:
         with open(args.html, encoding="utf-8") as fp:
             soup = BeautifulSoup(fp, "html.parser")
@@ -123,4 +124,9 @@ if __name__ == "__main__":
             downloader = Downloader()
             downloader.download(download_links_by_title, output_dir)
         except KeyboardInterrupt:
-            print("Keyboard Interrupt: cancelling operations...")
+            print("\nKeyboard Interrupt: stopping...")
+        except NoSuchWindowException as exc:
+            print("The browser session may have been closed. Exiting...")
+
+if __name__ == "__main__":
+    main()

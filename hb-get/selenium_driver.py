@@ -57,44 +57,41 @@ class HumbleDriver:
             user: A string of the user's HumbleBundle username.
             password: A string of the user's HumbleBundle password.
         """
+        self.driver.get(self.base_url)
+
+        # Click login button
+        login_btn = self.driver.find_element(By.LINK_TEXT, "Log In")
+        login_btn.click()
+
+        # Submit login form
+        form_user = self.driver.find_element(By.NAME, "username")
+        if user is None:
+            user = input("Please provide your HumbleBundle username: ")
+        form_user.send_keys(user)
+
+        form_pass = self.driver.find_element(By.NAME, "password")
+        if password is None:
+            password = getpass("Please provide your HumbleBundle password: ")
+        form_pass.send_keys(password)
+
+        form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
+        form_submit_btn.click()
+
+        # TODO: identify 2FA screen and reply with conditional warning/log message
+        # TODO: identify failed login screen and query user for another login attempt
+
+        # Wait for authentication to complete (including MFA prompt)
+        print("If MFA is enabled, you must provide the code.")
+        print(f"You have {self.max_auth_time} seconds.")
         try:
-            self.driver.get(self.base_url)
-
-            # Click login button
-            login_btn = self.driver.find_element(By.LINK_TEXT, "Log In")
-            login_btn.click()
-
-            # Submit login form
-            form_user = self.driver.find_element(By.NAME, "username")
-            if user is None:
-                user = input("Please provide your HumbleBundle username: ")
-            form_user.send_keys(user)
-
-            form_pass = self.driver.find_element(By.NAME, "password")
-            if password is None:
-                password = getpass("Please provide your HumbleBundle password: ")
-            form_pass.send_keys(password)
-
-            form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
-            form_submit_btn.click()
-
-            # TODO: identify 2FA screen and reply with conditional warning/log message
-            # TODO: identify failed login screen and query user for another login attempt
-
-            # Wait for authentication to complete (including MFA prompt)
-            print("If MFA is enabled, you must provide the code.")
-            print(f"You have {self.max_auth_time} seconds.")
-            try:
-                self.auth_wait.until(EC.none_of(EC.title_contains("Log In")))
-            except TimeoutException:
-                print("The authentication request timed out.")
-                again = input("Try again? (y/n): ")
-                if again.lower() == 'y':
-                    self.login(user)
-                else:
-                    sys.exit()
-        except KeyboardInterrupt:
-            print("Keyboard Interrupt. Exiting...")
+            self.auth_wait.until(EC.none_of(EC.title_contains("Log In")))
+        except TimeoutException:
+            print("The authentication request timed out.")
+            again = input("Try again? (y/n): ")
+            if again.lower() == 'y':
+                self.login(user)
+            else:
+                sys.exit()
 
     def get_purchases(self) -> list:
         """Retrives a list of elements corresponding to the purchases of user.

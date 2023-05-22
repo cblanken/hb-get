@@ -9,7 +9,7 @@ import requests
 import signal
 from threading import Event
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import NoSuchWindowException
+from selenium.common.exceptions import NoSuchWindowException, TimeoutException
 import selenium_driver as sd
 
 from rich.progress import (
@@ -76,7 +76,7 @@ class Downloader:
                     self.progress.update(task_id, advance=len(data))
                     if self.done_event.is_set():
                         return
-            self.progress.console.log(f"Downloaded {filepath}")
+            self.progress.console.log(f"Downloaded {filename}")
 
         except (OSError, IOError) as exc:
             self.progress.console.log(f"Could not open {filename}, skipping")
@@ -125,8 +125,8 @@ def main():
             downloader.download(download_links_by_title, output_dir)
         except KeyboardInterrupt:
             print("\nKeyboard Interrupt: stopping...")
-        except NoSuchWindowException as exc:
-            print("The browser session may have been closed. Exiting...")
+        except (NoSuchWindowException, TimeoutException) as exc:
+            print("The browser session ended or timed out. Exiting...")
 
 if __name__ == "__main__":
     main()

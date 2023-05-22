@@ -12,7 +12,6 @@ Typical usage example:
 """
 from getpass import getpass
 import os
-import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ChromeOptions
@@ -29,6 +28,7 @@ class HumbleDriver:
         # Initialize Selenium browser driver
         opts = ChromeOptions()
         opts.add_argument("--window-size=1600,900")
+        opts.add_argument("--headless=new")
 
         self.driver = webdriver.Chrome(options=opts)
         self.driver.implicitly_wait(1)
@@ -57,6 +57,7 @@ class HumbleDriver:
             user: A string of the user's HumbleBundle username.
             password: A string of the user's HumbleBundle password.
         """
+        print("Logging in...")
         self.driver.get(self.base_url)
 
         # Click login button
@@ -77,21 +78,30 @@ class HumbleDriver:
         form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
         form_submit_btn.click()
 
-        # TODO: identify 2FA screen and reply with conditional warning/log message
         # TODO: identify failed login screen and query user for another login attempt
-
         # Wait for authentication to complete (including MFA prompt)
-        print("If MFA is enabled, you must provide the code.")
-        print(f"You have {self.max_auth_time} seconds.")
+        print("Checking if MFA is enabled...")
+        verify_account_selector = "h1.header"
+
+        header = self.driver.find_element(By.CSS_SELECTOR, verify_account_selector)
+
+        if header.text.lower() != "verify account":
+            mfa_code = input("MFA is enabled. Enter your MFA code: ")
+            mfa_form = self.driver.find_element(By.NAME, "code")
+            mfa_form.send_keys(mfa_code)
+
+            mfa_form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
+            mfa_form_submit_btn.click()
         try:
             self.auth_wait.until(EC.none_of(EC.title_contains("Log In")))
+            print("Logged in")
         except TimeoutException:
             print("The authentication request timed out.")
             again = input("Try again? (y/n): ")
             if again.lower() == 'y':
                 self.login(user)
             else:
-                sys.exit()
+                raise
 
     def get_purchases(self) -> list:
         """Retrives a list of elements corresponding to the purchases of user.

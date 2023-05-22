@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from pprint import pprint
+from sys import stderr
 from threading import Event
 import argparse
 import signal
@@ -26,8 +27,6 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("-o", "--output_dir", nargs="?", default="./downloads",
                     help="Output directory")
-parser.add_argument("--html", action="store_true",
-                    help="Read from HTML input file instead of scraping humblebundle.com")
 parser.add_argument("-f", "--filetype", nargs="?", default="pdf",
                     help="Filetype of file to extract from bundle. Note files without a \
                         corresponding version in the [filetype] format will not be downloaded.")
@@ -90,40 +89,26 @@ class Downloader:
 
 
 def main():
-    if args.html:
-        with open(args.html, encoding="utf-8") as fp:
-            soup = BeautifulSoup(fp, "html.parser")
+    try:
+        hb = HumbleDriver("https://www.humblebundle.com")
+        hb.login()
 
-        dl_hrefs = soup.select(".download a[href^='https://dl.humble.com']")
+        print("> Retrieving purchases...")
+        purchase = hb.select_purchase()
 
-        # Filter links by file type
-        filtered_hrefs = list(
-            filter(lambda x: x.get_text().strip().lower() == args.filetype, dl_hrefs))
+        print("> Retrieving download links...")
+        download_links_by_title = hb.get_download_links_by_filename(args.filetype)
 
-        for i, link in enumerate(filtered_hrefs):
-            pprint(i, link)
-    else:
-        try:
-            hb = HumbleDriver("https://www.humblebundle.com")
-            hb.login()
+        # Create output directory
+        output_dir = Path(args.output_dir, purchase)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-            print("> Retrieving purchases...")
-            purchases_titles = hb.get_purchases()
-            purchase = hb.select_purchase()
-
-            print("> Retrieving download links...")
-            download_links_by_title = hb.get_download_links_by_filename(args.filetype)
-
-            # Create output directory
-            output_dir = Path(args.output_dir, purchase)
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-            downloader = Downloader()
-            downloader.download(download_links_by_title, output_dir)
-        except KeyboardInterrupt:
-            print("\nKeyboard Interrupt: stopping...")
-        except (NoSuchWindowException, TimeoutException) as exc:
-            print("The browser session ended or timed out. Exiting...")
+        downloader = Downloader()
+        downloader.download(download_links_by_title, output_dir)
+    except KeyboardInterrupt:
+        print("\nKeyboard Interrupt: stopping...")
+    except (NoSuchWindowException, TimeoutException):
+        print("The browser session ended or timed out. Exiting...", file=stderr)
 
 if __name__ == "__main__":
     main()

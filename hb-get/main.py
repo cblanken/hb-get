@@ -1,17 +1,13 @@
 #!/bin/python
-import argparse
 from concurrent.futures import ThreadPoolExecutor
-import os
-from functools import partial
 from pathlib import Path
 from pprint import pprint
-import requests
-import signal
 from threading import Event
+import argparse
+import signal
+import requests
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchWindowException, TimeoutException
-import selenium_driver as sd
-
 from rich.progress import (
     BarColumn,
     DownloadColumn,
@@ -21,6 +17,7 @@ from rich.progress import (
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
+from .selenium_driver import HumbleDriver
 
 parser = argparse.ArgumentParser(
         prog="hb-get",
@@ -107,7 +104,7 @@ def main():
             pprint(i, link)
     else:
         try:
-            hb = sd.HumbleDriver("https://www.humblebundle.com")
+            hb = HumbleDriver("https://www.humblebundle.com")
             hb.login()
 
             print("> Retrieving purchases...")

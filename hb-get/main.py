@@ -27,6 +27,8 @@ parser.add_argument("-o", "--output_dir", nargs="?", default="./downloads",
 parser.add_argument("-f", "--filetype", nargs="?", default="pdf",
                     help="Filetype of file to extract from bundle. Note files without a \
                         corresponding version in the [filetype] format will not be downloaded.")
+parser.add_argument("-t", "--title-includes", nargs="?", default="",
+                    help="Filters purchases by title.")
 
 args = parser.parse_args()
 
@@ -91,7 +93,7 @@ def main():
         while True:
             if hb.login():
                 print("> Retrieving purchases...")
-                purchase = hb.select_purchase()
+                purchase = hb.select_purchase(args.title_includes)
 
                 print("> Retrieving download links...")
                 download_links_by_title = hb.get_download_links_by_filename(args.filetype)

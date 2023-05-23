@@ -256,10 +256,11 @@ class HumbleDriver:
                     download_links_by_title[title + "." + filetype] = ele.get_attribute("href")
         return download_links_by_title
 
-    def select_purchase(self):
+    def select_purchase(self, includes_str: str):
         """Query user for selection of HumbleBundle purchases
         """
-        purchases_titles = [" ".join(x.text.split()[:-4]) for x in self.get_purchases()]
+        purchases_titles = [" ".join(x.text.split()[:-4])
+                            for x in self.get_purchases() if includes_str in x.text]
         if len(purchases_titles) == 0:
             return
 

@@ -2,33 +2,41 @@
 
 Typical usage example:
 
-    hb = sd.HumbleDriver("https://www.humblebundle.com")
-    hb.login()
-    purchases = hb.get_purchases()
-    hb.select_purchase()
-    download_links_by_title = hb.get_download_links_by_title(args.filetype)
-    for title,link in download_links_by_title.items():
-        print(title, link)
+    hb = HumbleDriver("https://www.humblebundle.com")
+    if hb.login():
+        purchases = hb.get_purchases()
+        hb.select_purchase()
+        download_links_by_title = hb.get_download_links_by_title(args.filetype)
+        for title,link in download_links_by_title.items():
+            print(title, link)
 """
 from getpass import getpass
 import os
+from enum import Enum
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ChromeOptions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+
+class HumblePageExpectedConditions(Enum):
+    """Enum for indicating current page of HumbleDriver"""
+    MAIN = EC.title_contains("Humble Bundle | game bundles, book bundles") # Main page
+    HOME = EC.url_matches("https://www.humblebundle.com/home/")
+    LOGIN_USER_PASS = EC.text_to_be_present_in_element((By.CSS_SELECTOR, "h1.header"), "Log In") # user/pass login page
+    LOGIN_MFA = EC.text_to_be_present_in_element((By.CSS_SELECTOR, "h1.header"), "Verify Account") # MFA page
 
 class HumbleDriver:
     """Selenium driver class"""
-    def __init__(self, url: str, max_auth_time: int = 60):
+    def __init__(self, url: str, max_auth_time: float = 1.0):
         self.base_url = url
         self.max_auth_time = max_auth_time
 
         # Initialize Selenium browser driver
         opts = ChromeOptions()
         opts.add_argument("--window-size=1600,900")
-        opts.add_argument("--headless=new")
+        # opts.add_argument("--headless=new")
 
         self.driver = webdriver.Chrome(options=opts)
         self.driver.implicitly_wait(1)
@@ -45,6 +53,101 @@ class HumbleDriver:
         # TODO: implement context manager __exit__
         pass
 
+    def _login_mfa_verify(self):
+        """Initiate MFA response
+
+        Note: It is assumed the driver is on the correct MFA response
+            page, incorrect state of the the driver will cause a failed
+            login attempt
+
+        Returns:
+            True: if user/password were correct and login was successful
+            False: if the login failed in any way
+        """
+        mfa_code = input("Please enter your MFA code: ")
+        mfa_form = self.driver.find_element(By.NAME, "code")
+        mfa_form.clear()
+        mfa_form.send_keys(mfa_code)
+
+        mfa_form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
+        mfa_form_submit_btn.click()
+
+        # An invalid MFA code was provided
+        try:
+            input_status = WebDriverWait(self.driver, self.max_auth_time).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, ".input-status"))).text
+        except TimeoutException:
+            # The provided MFA code was correct
+            return True
+
+        if "invalid token" in input_status.lower():
+            print(f"Login failed with \"{input_status.strip()}\"")
+            again = input("Try re-entering MFA? (y/n): ")
+            if again.lower() == 'y':
+                return self._login_mfa_verify()
+            else:
+                return False
+
+    def _login_user_pass(self, user: str = None, password: str = None):
+        """Initiate login with username and password
+
+        Note: It is assumed the driver is on the correct login page
+            at www.humblebundle.com/login, incorrect state of the the
+            driver will cause a failed login attempt
+
+        Returns:
+            True: if user/password were correct and login was successful
+            False: if the login failed in any way
+        """
+        try:
+            # Submit login for
+            form_user = self.driver.find_element(By.NAME, "username")
+            if user is None:
+                user = input("Please provide your HumbleBundle username: ")
+            form_user.clear()
+            form_user.send_keys(user)
+
+            form_pass = self.driver.find_element(By.NAME, "password")
+            if password is None:
+                password = getpass("Please provide your HumbleBundle password: ")
+            form_pass.clear()
+            form_pass.send_keys(password)
+
+            form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
+            form_submit_btn.click()
+
+        except NoSuchElementException as exc:
+            print(f"A page element required for login could not be found. {exc.msg}")
+            return False
+
+        # Wait for one of the following possible pages
+        try:
+            WebDriverWait(self.driver, 1).until(EC.any_of(
+                HumblePageExpectedConditions.LOGIN_MFA,
+                HumblePageExpectedConditions.MAIN,
+                HumblePageExpectedConditions.HOME,
+            ))
+            return True
+        except TimeoutException:
+            # An invalid user/password combination was used
+            try:
+                input_status = WebDriverWait(self.driver, self.max_auth_time).until(
+                    EC.visibility_of_element_located((By.CSS_SELECTOR, ".input-status"))).text
+                if "don't match" in input_status.lower():
+                    print(f"Login failed with: \"{input_status.strip()}\"")
+                    again = input("Try again? (y/n): ")
+                    if again.lower() == 'y':
+                        return self._login_user_pass()
+                    else:
+                        return False
+                else:
+                    print("The provided user/password were incorrect, but no error message was provided.")
+                    return False
+            except TimeoutException:
+                # The provided user/password were correct
+                return True
+
+
     def login(self,
               user: str = os.environ.get("HBGET_USER"),
               password: str = os.environ.get("HBGET_PASS")):
@@ -56,55 +159,38 @@ class HumbleDriver:
         Args:
             user: A string of the user's HumbleBundle username.
             password: A string of the user's HumbleBundle password.
+
+        Returns:
+            True: if login was successful
+            False: if login failed
         """
+        # Navigate to login page
         print("Logging in...")
-        self.driver.get(self.base_url)
+        self.driver.get(self.base_url + "/login")
 
-        # Click login button
-        login_btn = self.driver.find_element(By.LINK_TEXT, "Log In")
-        login_btn.click()
+        if self._login_user_pass(user, password):
+            # Username and password were correct
+            print("The provided username and password were correct.")
 
-        # Submit login form
-        form_user = self.driver.find_element(By.NAME, "username")
-        if user is None:
-            user = input("Please provide your HumbleBundle username: ")
-        form_user.send_keys(user)
+            # Checking for MFA
+            try:
+                self.auth_wait.until(EC.any_of(
+                    HumblePageExpectedConditions.MAIN,
+                    HumblePageExpectedConditions.HOME
+                ))
+                print("Successfully logged in.")
+                return True
+            except TimeoutException:
+                self.auth_wait.until(HumblePageExpectedConditions.LOGIN_MFA)
+                print("MFA (multi-factor authentication) is enabled")
+                if self._login_mfa_verify():
+                    print("The provided MFA code was correct.")
+                    print("Successfully logged in.")
+                    return True
 
-        form_pass = self.driver.find_element(By.NAME, "password")
-        if password is None:
-            password = getpass("Please provide your HumbleBundle password: ")
-        form_pass.send_keys(password)
-
-        form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
-        form_submit_btn.click()
-
-        # TODO: identify failed login screen and query user for another login attempt
-        # Wait for authentication to complete (including MFA prompt)
-        print("Checking if MFA is enabled...")
-        verify_account_selector = "h1.header"
-
-        header = self.driver.find_element(By.CSS_SELECTOR, verify_account_selector)
-
-        if header.text.lower() != "verify account":
-            mfa_code = input("MFA is enabled. Enter your MFA code: ")
-            mfa_form = self.driver.find_element(By.NAME, "code")
-            mfa_form.send_keys(mfa_code)
-
-            mfa_form_submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]")
-            mfa_form_submit_btn.click()
-        try:
-            self.auth_wait.until(EC.none_of(EC.title_contains("Log In")))
-            print("Logged in")
-        except TimeoutException:
-            print("The authentication request timed out.")
-            again = input("Try again? (y/n): ")
-            if again.lower() == 'y':
-                self.login(user)
-            else:
-                raise
 
     def get_purchases(self) -> list:
-        """Retrives a list of elements corresponding to the purchases of user.
+        """Retrieves a list of elements corresponding to the purchases of user.
 
         Returns:
             A list of type List[WebElement] of each purchase on a user's purchases page

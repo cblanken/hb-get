@@ -54,7 +54,7 @@ class Downloader:
     def save_from_url(self, task_id: TaskID, url: str, output_dir: Path, filename: str):
         filepath = Path(output_dir, filename)
         if filepath.exists():
-            self.progress.console.log(f"Skipping {filepath}, already exists")
+            self.progress.console.log(f"Skipping {filename}, already exists")
             return
 
         # Fetch file from web
@@ -102,6 +102,7 @@ def main():
 
                 downloader = Downloader()
                 downloader.download(download_links_by_title, output_dir)
+                break
             else:
                 print("Login failed.")
                 again = input("Try again? (y/n): ")

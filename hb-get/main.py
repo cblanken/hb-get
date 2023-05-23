@@ -1,13 +1,10 @@
-#!/bin/python
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from pprint import pprint
 from sys import stderr
 from threading import Event
 import argparse
 import signal
 import requests
-from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchWindowException, TimeoutException
 from rich.progress import (
     BarColumn,
@@ -91,20 +88,26 @@ class Downloader:
 def main():
     try:
         hb = HumbleDriver("https://www.humblebundle.com")
-        hb.login()
+        while True:
+            if hb.login():
+                print("> Retrieving purchases...")
+                purchase = hb.select_purchase()
 
-        print("> Retrieving purchases...")
-        purchase = hb.select_purchase()
+                print("> Retrieving download links...")
+                download_links_by_title = hb.get_download_links_by_filename(args.filetype)
 
-        print("> Retrieving download links...")
-        download_links_by_title = hb.get_download_links_by_filename(args.filetype)
+                # Create output directory
+                output_dir = Path(args.output_dir, purchase)
+                output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create output directory
-        output_dir = Path(args.output_dir, purchase)
-        output_dir.mkdir(parents=True, exist_ok=True)
+                downloader = Downloader()
+                downloader.download(download_links_by_title, output_dir)
+            else:
+                print("Login failed.")
+                again = input("Try again? (y/n): ")
+                if again.lower() != 'y':
+                    break
 
-        downloader = Downloader()
-        downloader.download(download_links_by_title, output_dir)
     except KeyboardInterrupt:
         print("\nKeyboard Interrupt: stopping...")
     except (NoSuchWindowException, TimeoutException):

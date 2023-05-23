@@ -19,8 +19,10 @@ from .selenium_driver import HumbleDriver
 
 parser = argparse.ArgumentParser(
         prog="hb-get",
-        description="Humble Book Bundle download program",
-        epilog="")
+        description="""Humble Book Bundle download program. Use the HBGET_USER and \
+            HBGET_PASS environment variables to specify username and password for \
+            login. Otherwise you will be prompted during the login process"""
+)
 
 parser.add_argument("-o", "--output_dir", nargs="?", default="./downloads",
                     help="Output directory")

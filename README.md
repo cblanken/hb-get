@@ -21,18 +21,18 @@ python ./hb-get/main.py
 ```
 
 # Usage
-```shell
+```
 usage: hb-get [-h] [-o [OUTPUT_DIR]] [-f [FILETYPE]] [-t [TITLE_INCLUDES]]
 
-Humble Book Bundle download program
+Humble Book Bundle download program. Use the HBGET_USER and HBGET_PASS environment variables to specify username and password for login. Otherwise you will be prompted during the login process
 
 options:
   -h, --help            show this help message and exit
   -o [OUTPUT_DIR], --output_dir [OUTPUT_DIR]
                         Output directory
   -f [FILETYPE], --filetype [FILETYPE]
-                        Filetype of file to extract from bundle. Note files without a
-                        corresponding version in the [filetype] format will not be downloaded.
+                        Filetype of file to extract from bundle. Note files without a corresponding version in the [filetype]
+                        format will not be downloaded.
   -t [TITLE_INCLUDES], --title-includes [TITLE_INCLUDES]
                         Filters purchases by title.
 ```
@@ -42,7 +42,7 @@ Below is a short demo of installing the tool and using it to download books from
 
 ![demo-gif](https://github.com/cblanken/hb-get/assets/19908880/e657d364-8bac-4646-9222-363c0f9e7b40)
 
-- Note that the the demo above has already specified a username and password, otherwise the program will prompt you to enter these values when initiating the login.
+- Note that the the demo above has already specified a username and password via the environment variables __HBGET_USER__ and __HBGET_PASS__. If these aren't provided then the program will request them before initiating the login process
 - The `-t` flag used with `poetry run main` specifies a filter for purchases by their titles. As seen in the demo, only purchases with "Book Bundle" in their title are shown with an option to download.
 
 - The default format for download is `pdf` though that can be changed with the `-f` flag

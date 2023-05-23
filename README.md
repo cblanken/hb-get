@@ -40,7 +40,7 @@ options:
 ## Demo
 Below is a short demo of installing the tool and using it to download books from a bundle.
 
-![demo-gif]()
+![demo-gif](https://github.com/cblanken/hb-get/assets/19908880/e657d364-8bac-4646-9222-363c0f9e7b40)
 
 - Note that the the demo above has already specified a username and password, otherwise the program will prompt you to enter these values when initiating the login.
 - The `-t` flag used with `poetry run main` specifies a filter for purchases by their titles. As seen in the demo, only purchases with "Book Bundle" in their title are shown with an option to download.
@@ -55,4 +55,4 @@ This software uses the following open source packages
 - [Selenium](https://www.selenium.dev/documentation)
 
 # License
-This project is licensed under the MIT - see [LICENSE.md](./LICENSE.md) for details
+This project is licensed under the MIT license - see [LICENSE.md](./LICENSE.md) for details
